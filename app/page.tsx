@@ -101,7 +101,7 @@ export default function Home() {
         <section className="hero screen-enter">
           <div className="hero__compass"><Sigil /><div className="orbit orbit--one" /><div className="orbit orbit--two" /></div>
           <div className="hero__copy">
-            <p className="kicker"><span /> ПАЛИТРА СУДЬБЫ <span /></p>
+            <p className="kicker"><span /> СИГ <span /></p>
             <h1>Твой компас<br /><em>уже внутри</em></h1>
             <p className="hero__lead">Увидь свой настоящий момент.<br />Найди направление. Пройди свой путь.</p>
             <div className="hero__actions"><button className="cta cta--primary" onClick={() => setScreen('topic')}><Sparkles size={20} /><span>Открыть компас</span><ArrowRight size={19} /></button><button className="cta cta--ghost"><BookOpen size={20} /><span>12 ступеней</span></button></div>
