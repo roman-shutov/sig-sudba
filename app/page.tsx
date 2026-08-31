@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, BookOpen, CircleUserRound, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, CircleUserRound, Pause, Play, Sparkles, Volume2, VolumeX } from 'lucide-react';
 
 type Screen = 'home' | 'topic' | 'digits' | 'loading' | 'result' | 'steps' | 'step';
 
@@ -50,11 +50,12 @@ export default function Home() {
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioGainRef = useRef<GainNode | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
-  const audioSuspendTimerRef = useRef<number | null>(null);
   const lastHoverSoundRef = useRef(0);
   const [screen, setScreen] = useState<Screen>('home');
-  const [sound, setSound] = useState(false);
-  const [soundLoading, setSoundLoading] = useState(false);
+  const [musicOn, setMusicOn] = useState(false);
+  const [effectsOn, setEffectsOn] = useState(true);
+  const [musicLoading, setMusicLoading] = useState(false);
+  const [notice, setNotice] = useState('');
   const [direction, setDirection] = useState(directions[0]);
   const [digits, setDigits] = useState<number[]>([]);
   const [activeStep, setActiveStep] = useState(0);
@@ -66,9 +67,15 @@ export default function Home() {
     setScreen('loading');
     window.setTimeout(() => setScreen('result'), 2100);
   };
+  const showNotice = (message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice((current) => current === message ? '' : current), 2600);
+  };
   const playUiSound = (kind: 'hover' | 'tap' | 'select' | 'confirm') => {
-    const context = audioContextRef.current;
-    if (!sound || !context || context.state !== 'running') return;
+    if (!effectsOn) return;
+    const context = audioContextRef.current ?? new AudioContext();
+    audioContextRef.current = context;
+    if (context.state === 'suspended') void context.resume();
 
     const master = context.createGain();
     master.gain.value = kind === 'hover' ? .055 : .105;
@@ -106,38 +113,47 @@ export default function Home() {
     lastHoverSoundRef.current = now;
     playUiSound('hover');
   };
-  const toggleSound = async () => {
-    if (soundLoading) return;
+  const toggleMusic = async () => {
+    if (musicLoading) return;
 
     const existingContext = audioContextRef.current;
-    if (sound && existingContext) {
-      if (audioSuspendTimerRef.current) window.clearTimeout(audioSuspendTimerRef.current);
+    if (musicOn && existingContext) {
       const gain = audioGainRef.current;
       if (gain) {
         gain.gain.cancelScheduledValues(existingContext.currentTime);
         gain.gain.setValueAtTime(gain.gain.value, existingContext.currentTime);
         gain.gain.linearRampToValueAtTime(0, existingContext.currentTime + .45);
       }
-      audioSuspendTimerRef.current = window.setTimeout(() => void existingContext.suspend(), 480);
-      setSound(false);
+      setMusicOn(false);
       return;
     }
 
-    setSoundLoading(true);
+    setMusicLoading(true);
     try {
       const context = existingContext ?? new AudioContext();
       audioContextRef.current = context;
-      if (audioSuspendTimerRef.current) window.clearTimeout(audioSuspendTimerRef.current);
       await context.resume();
 
-      // Interface sounds work immediately. The ambient track is added when its
-      // final Suno file appears in /public/audio.
-      setSound(true);
+      setMusicOn(true);
 
       if (!audioBufferRef.current) {
-        const response = await fetch('/audio/sig-ambient-loop.mp3');
-        if (!response.ok) throw new Error('Ambient track is not available');
-        audioBufferRef.current = await context.decodeAudioData(await response.arrayBuffer());
+        const urls = ['/audio/endless-bell-01.mp3', '/audio/endless-bell-02.mp3'];
+        const buffers = await Promise.all(urls.map(async (url) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Ambient track is not available: ${url}`);
+          return context.decodeAudioData(await response.arrayBuffer());
+        }));
+        const channelCount = Math.max(...buffers.map((buffer) => buffer.numberOfChannels));
+        const totalLength = buffers.reduce((sum, buffer) => sum + buffer.length, 0);
+        const playlist = context.createBuffer(channelCount, totalLength, context.sampleRate);
+        let offset = 0;
+        buffers.forEach((buffer) => {
+          for (let channel = 0; channel < channelCount; channel += 1) {
+            playlist.getChannelData(channel).set(buffer.getChannelData(Math.min(channel, buffer.numberOfChannels - 1)), offset);
+          }
+          offset += buffer.length;
+        });
+        audioBufferRef.current = playlist;
       }
 
       if (!audioSourceRef.current) {
@@ -160,9 +176,20 @@ export default function Home() {
       }
     } catch (error) {
       console.warn('Не удалось включить фоновую музыку:', error);
+      setMusicOn(false);
     } finally {
-      setSoundLoading(false);
+      setMusicLoading(false);
     }
+  };
+  const toggleEffects = async () => {
+    if (effectsOn) {
+      setEffectsOn(false);
+      return;
+    }
+    const context = audioContextRef.current ?? new AudioContext();
+    audioContextRef.current = context;
+    await context.resume();
+    setEffectsOn(true);
   };
   useEffect(() => {
     const shell = shellRef.current;
@@ -198,8 +225,8 @@ export default function Home() {
       <div className="world" aria-hidden="true"><div className="world__image" /><div className="world__veil" /><div className="aurora" /><div className="stars stars--one" /><div className="stars stars--two" /></div>
       <header className="topbar">
         <button className="brand" onClick={() => setScreen('home')} aria-label="На главную"><Sigil compact /><span><b>СИСТЕМА</b><small>ИНДИВИДУАЛЬНОЙ ГЕОМЕТРИИ</small></span></button>
-        <nav aria-label="Основная навигация"><button>О системе</button><button>Как это работает</button><button>Отзывы</button></nav>
-        <div className="topbar__actions"><button className={`sound ${sound ? 'is-on' : ''}`} onClick={toggleSound} aria-label={sound ? 'Выключить музыку' : 'Включить музыку'} aria-pressed={sound} disabled={soundLoading}><i /><i /><i /></button><button className="account"><CircleUserRound size={18} /><span>Личный кабинет</span></button></div>
+        <nav aria-label="Основная навигация"><button onClick={()=>showNotice('О системе — раздел готовится к следующей версии')}>О системе</button><button onClick={()=>showNotice('Выбери направление и собери свой первый компас')}>Как это работает</button><button onClick={()=>showNotice('Отзывы появятся после запуска полной версии')}>Отзывы</button></nav>
+        <div className="topbar__actions"><button className={`sound music-control ${musicOn ? 'is-on' : ''}`} onClick={toggleMusic} aria-label={musicOn ? 'Поставить музыку на паузу' : 'Включить музыку'} aria-pressed={musicOn} disabled={musicLoading}>{musicOn ? <Pause size={14} fill="currentColor"/> : <Play size={14} fill="currentColor"/>}<span className="sound__bars" aria-hidden="true"><i /><i /><i /></span></button><button className={`sound effects-control ${effectsOn ? 'is-on' : ''}`} onClick={toggleEffects} aria-label={effectsOn ? 'Выключить звуковые эффекты' : 'Включить звуковые эффекты'} aria-pressed={effectsOn}>{effectsOn ? <Volume2 size={16}/> : <VolumeX size={16}/>}</button><button className="account" onClick={()=>showNotice('Личный кабинет появится в следующей версии')}><CircleUserRound size={18} /><span>Личный кабинет</span></button></div>
       </header>
 
       {screen === 'home' ? (
@@ -209,7 +236,7 @@ export default function Home() {
             <p className="kicker"><span /> СИГ <span /></p>
             <h1>Твой компас<br /><em>уже внутри</em></h1>
             <p className="hero__lead">Увидь свой настоящий момент.<br />Найди направление. Пройди свой путь.</p>
-            <div className="hero__actions"><button className="cta cta--primary" onClick={() => setScreen('topic')}><Sparkles size={20} /><span>Открыть компас</span><ArrowRight size={19} /></button><button className="cta cta--ghost"><BookOpen size={20} /><span>12 ступеней</span></button></div>
+            <div className="hero__actions"><button className="cta cta--primary" onClick={() => setScreen('topic')}><Sparkles size={20} /><span>Открыть компас</span><ArrowRight size={19} /></button><button className="cta cta--ghost" onClick={()=>setScreen('steps')}><BookOpen size={20} /><span>12 ступеней</span></button></div>
             <div className="hero__note"><i /> Первый компас — бесплатно</div>
           </div>
         </section>
@@ -231,12 +258,13 @@ export default function Home() {
       ) : screen === 'loading' ? (
         <section className="loading-screen screen-enter"><div className="loading-compass"><Sigil /><div className="scan-ring"/><div className="scan-ring scan-ring--two"/></div><p className="kicker"><span /> СИСТЕМА СОБИРАЕТ КОД <span /></p><h2>{digits.join(' · ')}</h2><div className="loading-steps"><span>Считываем вектор</span><span>Определяем баланс</span><span>Собираем компас</span></div></section>
       ) : screen === 'result' ? (
-        <section className="result screen-enter"><button className="back" onClick={()=>setScreen('digits')}>← Изменить код</button><div className="result__visual"><Sigil /><div className="code-pills">{digits.map((n)=><i key={n}>{n}</i>)}</div></div><div className="result__content"><p className="kicker"><span /> КОМПАС НАСТОЯЩЕГО МОМЕНТ <span /></p><h2>Твоё внимание<br /><em>ищет новый вектор</em></h2><div className="insight-grid"><article className="plus"><b>+</b><span><small>СЕЙЧАС В ПЛЮСЕ</small><strong>Интуиция и готовность к движению</strong></span></article><article className="minus"><b>−</b><span><small>СЕЙЧАС В МИНУСЕ</small><strong>Нетерпение и желание ускорить ответ</strong></span></article><article className="focus"><b>↗</b><span><small>КУДА НАПРАВЛЕНО</small><strong>На выбор между привычным и новым</strong></span></article><article className="attention"><b>!</b><span><small>ТРЕБУЕТ ВНИМАНИЯ</small><strong>Свой ритм и реальные ресурсы</strong></span></article></div><p className="demo-note">Демонстрационная интерпретация — алгоритм автора будет подключён позже.</p><div className="result__actions"><button className="cta cta--primary" onClick={()=>setScreen('steps')}><span>Перейти к 12 ступеням</span><ArrowRight size={18}/></button><button className="cta cta--ghost">Задать вопрос</button></div></div></section>
+        <section className="result screen-enter"><button className="back" onClick={()=>setScreen('digits')}>← Изменить код</button><div className="result__visual"><Sigil /><div className="code-pills">{digits.map((n)=><i key={n}>{n}</i>)}</div></div><div className="result__content"><p className="kicker"><span /> КОМПАС НАСТОЯЩЕГО МОМЕНТА <span /></p><h2>Твоё внимание<br /><em>ищет новый вектор</em></h2><div className="insight-grid"><article className="plus"><b>+</b><span><small>СЕЙЧАС В ПЛЮСЕ</small><strong>Интуиция и готовность к движению</strong></span></article><article className="minus"><b>−</b><span><small>СЕЙЧАС В МИНУСЕ</small><strong>Нетерпение и желание ускорить ответ</strong></span></article><article className="focus"><b>↗</b><span><small>КУДА НАПРАВЛЕНО</small><strong>На выбор между привычным и новым</strong></span></article><article className="attention"><b>!</b><span><small>ТРЕБУЕТ ВНИМАНИЯ</small><strong>Свой ритм и реальные ресурсы</strong></span></article></div><p className="demo-note">Демонстрационная интерпретация — алгоритм автора будет подключён позже.</p><div className="result__actions"><button className="cta cta--primary" onClick={()=>setScreen('steps')}><span>Перейти к 12 ступеням</span><ArrowRight size={18}/></button><button className="cta cta--ghost" onClick={()=>showNotice('Дополнительные вопросы будут подключены вместе с алгоритмом')}>Задать вопрос</button></div></div></section>
       ) : screen === 'steps' ? (
-        <section className="steps-screen screen-enter"><button className="back" onClick={()=>setScreen('result')}>← К компасу</button><div className="steps-heading"><p className="kicker"><span /> ПУТЬ К СЕБЕ <span /></p><h2>12 ступеней</h2><p>Открывай главы постепенно или исследуй весь маршрут.</p></div><div className="steps-wheel"><div className="steps-wheel__center"><div className="steps-center__compass"><Sigil/><div className="orbit orbit--one"/><div className="orbit orbit--two"/></div><div className="steps-center__code" aria-label={`Выбранный код ${digits.join(', ')}`}>{digits.map((digit,index)=><i key={`${digit}-${index}`}>{digit}</i>)}</div><small>ТВОЙ ВЫБРАННЫЙ КОД</small></div>{stepNames.map((name,i)=><button key={name} onClick={()=>{setActiveStep(i);setScreen('step')}} style={{'--i':i,'--tone':stepColors[i]} as React.CSSProperties}><i>{i+1}</i><span>{name}</span></button>)}</div><div className="steps-offer"><span>✦ Первая ступень открыта в деморежиме</span><button>Открыть весь путь</button></div></section>
+        <section className="steps-screen screen-enter"><button className="back" onClick={()=>setScreen(digits.length ? 'result' : 'home')}>← {digits.length ? 'К компасу' : 'На главную'}</button><div className="steps-heading"><p className="kicker"><span /> ПУТЬ К СЕБЕ <span /></p><h2>12 ступеней</h2><p>Открывай главы постепенно или исследуй весь маршрут.</p></div><div className="steps-wheel"><div className="steps-wheel__center"><div className="steps-center__compass"><Sigil/><div className="orbit orbit--one"/><div className="orbit orbit--two"/></div>{digits.length ? <div className="steps-center__code" aria-label={`Выбранный код ${digits.join(', ')}`}>{digits.map((digit,index)=><i key={`${digit}-${index}`}>{digit}</i>)}</div> : null}<small>{digits.length ? 'ТВОЙ ВЫБРАННЫЙ КОД' : 'ВЫБЕРИ ЛЮБУЮ СТУПЕНЬ'}</small></div>{stepNames.map((name,i)=><button key={name} onClick={()=>{setActiveStep(i);setScreen('step')}} style={{'--i':i,'--tone':stepColors[i]} as React.CSSProperties}><i>{i+1}</i><span>{name}</span></button>)}</div><div className="steps-offer"><span>✦ Первая ступень открыта в деморежиме</span><button onClick={()=>showNotice('Полный путь будет доступен после подключения оплаты')}>Открыть весь путь</button></div></section>
       ) : (
         <section className="step-detail screen-enter" style={{'--tone':stepColors[activeStep]} as React.CSSProperties}><button className="back" onClick={()=>setScreen('steps')}>← Все ступени</button><div className="step-detail__mark"><span>{activeStep+1}</span><i/><i/><i/></div><div className="step-detail__copy"><p className="kicker"><span /> СТУПЕНЬ {activeStep+1} ИЗ 12 <span /></p><h2>{stepNames[activeStep]}</h2><p className="step-intro">Эта глава показывает, как выбранная энергия проявляется в твоей теме «{direction.title}».</p><div className="step-panels"><article><small>СИЛЬНАЯ СТОРОНА</small><strong>Способность замечать связи и находить неочевидный ход.</strong></article><article><small>ТОЧКА РОСТА</small><strong>Оставаться в контакте с реальностью и не торопить события.</strong></article><article><small>ВОПРОС К СЕБЕ</small><strong>Какой один шаг я могу сделать сегодня без давления на себя?</strong></article></div><p className="demo-note">Текст ступени демонстрационный и будет заменён авторской методикой.</p><button className="cta cta--primary" onClick={()=>{setActiveStep((activeStep+1)%12);}}><span>Следующая ступень</span><ArrowRight size={18}/></button></div></section>
       )}
+      {notice ? <div className="game-notice" role="status">{notice}</div> : null}
       <footer className="footerline"><span>© 2026 СИГ</span><span>Авторская система саморефлексии</span></footer>
     </main>
   );
