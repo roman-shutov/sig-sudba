@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, BookOpen, CircleUserRound, Sparkles } from 'lucide-react';
 
 type Screen = 'home' | 'topic' | 'digits' | 'loading' | 'result' | 'steps' | 'step';
@@ -45,6 +45,7 @@ function Sigil({ compact = false }: { compact?: boolean }) {
 }
 
 export default function Home() {
+  const shellRef = useRef<HTMLElement>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [sound, setSound] = useState(true);
   const [direction, setDirection] = useState(directions[0]);
@@ -58,8 +59,37 @@ export default function Home() {
     setScreen('loading');
     window.setTimeout(() => setScreen('result'), 2100);
   };
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    const move = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const x = (event.clientX / window.innerWidth - .5) * 2;
+        const y = (event.clientY / window.innerHeight - .5) * 2;
+        shell.style.setProperty('--bg-x', `${(-x * 18).toFixed(1)}px`);
+        shell.style.setProperty('--bg-y', `${(-y * 12).toFixed(1)}px`);
+        shell.style.setProperty('--light-x', `${(x * 28).toFixed(1)}px`);
+        shell.style.setProperty('--light-y', `${(y * 18).toFixed(1)}px`);
+        shell.style.setProperty('--stars-x', `${(x * 13).toFixed(1)}px`);
+        shell.style.setProperty('--stars-y', `${(y * 9).toFixed(1)}px`);
+      });
+    };
+    const reset = () => {
+      ['--bg-x','--bg-y','--light-x','--light-y','--stars-x','--stars-y'].forEach((name) => shell.style.setProperty(name, '0px'));
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    document.addEventListener('mouseleave', reset);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', move);
+      document.removeEventListener('mouseleave', reset);
+    };
+  }, []);
   return (
-    <main className="game-shell">
+    <main ref={shellRef} className="game-shell">
       <div className="world" aria-hidden="true"><div className="world__image" /><div className="world__veil" /><div className="aurora" /><div className="stars stars--one" /><div className="stars stars--two" /></div>
       <header className="topbar">
         <button className="brand" onClick={() => setScreen('home')} aria-label="На главную"><Sigil compact /><span><b>СИСТЕМА</b><small>ИНДИВИДУАЛЬНОЙ ГЕОМЕТРИИ</small></span></button>
