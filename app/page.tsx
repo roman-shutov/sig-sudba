@@ -119,7 +119,7 @@ export default function Home() {
         <section className="ritual screen-enter">
           <button className="back" onClick={() => setScreen('topic')}>← Назад</button>
           <div className="ritual__copy"><p className="kicker"><span /> ШАГ 2 ИЗ 3 <span /></p><h2>Выбери цифры,<br /><em>которые тебя зовут</em></h2><p>Не анализируй. Отметь от 3 до 9 цифр, которые первыми привлекли внимание.</p></div>
-          <div className="number-orbit"><div className="number-orbit__core"><Sigil compact /><small>{direction.eyebrow}</small><b>{digits.length}<i>/9</i></b></div>{Array.from({length:12},(_,i)=>i+1).map((n,i)=><button key={n} onClick={()=>toggleDigit(n)} className={digits.includes(n)?'is-selected':''} style={{'--i':i,'--tone':stepColors[i]} as React.CSSProperties} aria-label={`Цифра ${n}`}>{n}</button>)}</div>
+          <div className="number-orbit"><div className="number-orbit__core" aria-live="polite"><b>{digits.length}<i>из 9</i></b><small>ВЫБРАНО</small></div>{Array.from({length:12},(_,i)=>i+1).map((n,i)=><button key={n} onClick={()=>toggleDigit(n)} className={digits.includes(n)?'is-selected':''} style={{'--i':i,'--tone':stepColors[i]} as React.CSSProperties} aria-label={`Цифра ${n}`}>{n}</button>)}</div>
           <div className="chosen-line">{Array.from({length:9},(_,i)=><span key={i} className={digits[i]?'filled':''}>{digits[i] ?? '·'}</span>)}</div>
           <button className="cta cta--primary ritual__cta" disabled={digits.length<3} onClick={buildCompass}><Sparkles size={19}/><span>{digits.length<3?`Выбери ещё ${3-digits.length}`:'Собрать компас'}</span><ArrowRight size={18}/></button>
         </section>
