@@ -6,7 +6,7 @@ const display = Cormorant_Garamond({ variable: '--font-display', subsets: ['cyri
 const sans = Manrope({ variable: '--font-sans', subsets: ['cyrillic'], weight: ['400', '500', '600', '700'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://palitra-sudby-sig.supashutik.chatgpt.site'),
+  metadataBase: new URL('https://sigsystem.ru'),
   title: 'СИГ',
   description: 'Интерактивный компас настоящего момента и 12 ступеней к себе.',
   icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }], shortcut: '/favicon.svg' },
