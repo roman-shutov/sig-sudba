@@ -46,8 +46,15 @@ function Sigil({ compact = false }: { compact?: boolean }) {
 
 export default function Home() {
   const shellRef = useRef<HTMLElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioGainRef = useRef<GainNode | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const audioSuspendTimerRef = useRef<number | null>(null);
+  const lastHoverSoundRef = useRef(0);
   const [screen, setScreen] = useState<Screen>('home');
-  const [sound, setSound] = useState(true);
+  const [sound, setSound] = useState(false);
+  const [soundLoading, setSoundLoading] = useState(false);
   const [direction, setDirection] = useState(directions[0]);
   const [digits, setDigits] = useState<number[]>([]);
   const [activeStep, setActiveStep] = useState(0);
@@ -58,6 +65,104 @@ export default function Home() {
     if (digits.length < 3) return;
     setScreen('loading');
     window.setTimeout(() => setScreen('result'), 2100);
+  };
+  const playUiSound = (kind: 'hover' | 'tap' | 'select' | 'confirm') => {
+    const context = audioContextRef.current;
+    if (!sound || !context || context.state !== 'running') return;
+
+    const master = context.createGain();
+    master.gain.value = kind === 'hover' ? .055 : .105;
+    master.connect(context.destination);
+    const now = context.currentTime;
+    const notes = kind === 'hover' ? [[760, 0, .055]] : kind === 'select' ? [[510, 0, .09], [765, .045, .13]] : kind === 'confirm' ? [[392, 0, .12], [587, .075, .15], [784, .15, .2]] : [[430, 0, .075], [610, .025, .095]];
+
+    notes.forEach(([frequency, delay, duration], index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = index === 0 ? 'sine' : 'triangle';
+      oscillator.frequency.setValueAtTime(frequency, now + delay);
+      oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.025, now + delay + duration);
+      gain.gain.setValueAtTime(.0001, now + delay);
+      gain.gain.exponentialRampToValueAtTime(1, now + delay + .008);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + delay + duration);
+      oscillator.connect(gain).connect(master);
+      oscillator.start(now + delay);
+      oscillator.stop(now + delay + duration + .015);
+    });
+  };
+  const handleInterfaceClick = (event: React.MouseEvent<HTMLElement>) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
+    if (!button || button.disabled || button.classList.contains('sound')) return;
+    if (button.closest('.number-orbit')) playUiSound('select');
+    else if (button.classList.contains('cta--primary') || button.classList.contains('direction-card')) playUiSound('confirm');
+    else playUiSound('tap');
+  };
+  const handleInterfaceHover = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') return;
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
+    if (!button || button.disabled || button.contains(event.relatedTarget as Node | null)) return;
+    const now = performance.now();
+    if (now - lastHoverSoundRef.current < 85) return;
+    lastHoverSoundRef.current = now;
+    playUiSound('hover');
+  };
+  const toggleSound = async () => {
+    if (soundLoading) return;
+
+    const existingContext = audioContextRef.current;
+    if (sound && existingContext) {
+      if (audioSuspendTimerRef.current) window.clearTimeout(audioSuspendTimerRef.current);
+      const gain = audioGainRef.current;
+      if (gain) {
+        gain.gain.cancelScheduledValues(existingContext.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, existingContext.currentTime);
+        gain.gain.linearRampToValueAtTime(0, existingContext.currentTime + .45);
+      }
+      audioSuspendTimerRef.current = window.setTimeout(() => void existingContext.suspend(), 480);
+      setSound(false);
+      return;
+    }
+
+    setSoundLoading(true);
+    try {
+      const context = existingContext ?? new AudioContext();
+      audioContextRef.current = context;
+      if (audioSuspendTimerRef.current) window.clearTimeout(audioSuspendTimerRef.current);
+      await context.resume();
+
+      // Interface sounds work immediately. The ambient track is added when its
+      // final Suno file appears in /public/audio.
+      setSound(true);
+
+      if (!audioBufferRef.current) {
+        const response = await fetch('/audio/sig-ambient-loop.mp3');
+        if (!response.ok) throw new Error('Ambient track is not available');
+        audioBufferRef.current = await context.decodeAudioData(await response.arrayBuffer());
+      }
+
+      if (!audioSourceRef.current) {
+        const source = context.createBufferSource();
+        const gain = context.createGain();
+        source.buffer = audioBufferRef.current;
+        source.loop = true;
+        gain.gain.setValueAtTime(0, context.currentTime);
+        source.connect(gain).connect(context.destination);
+        source.start();
+        audioSourceRef.current = source;
+        audioGainRef.current = gain;
+      }
+
+      const gain = audioGainRef.current;
+      if (gain) {
+        gain.gain.cancelScheduledValues(context.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
+        gain.gain.linearRampToValueAtTime(.24, context.currentTime + 1.2);
+      }
+    } catch (error) {
+      console.warn('Не удалось включить фоновую музыку:', error);
+    } finally {
+      setSoundLoading(false);
+    }
   };
   useEffect(() => {
     const shell = shellRef.current;
@@ -89,12 +194,12 @@ export default function Home() {
     };
   }, []);
   return (
-    <main ref={shellRef} className="game-shell">
+    <main ref={shellRef} className="game-shell" onClickCapture={handleInterfaceClick} onPointerOverCapture={handleInterfaceHover}>
       <div className="world" aria-hidden="true"><div className="world__image" /><div className="world__veil" /><div className="aurora" /><div className="stars stars--one" /><div className="stars stars--two" /></div>
       <header className="topbar">
         <button className="brand" onClick={() => setScreen('home')} aria-label="На главную"><Sigil compact /><span><b>СИСТЕМА</b><small>ИНДИВИДУАЛЬНОЙ ГЕОМЕТРИИ</small></span></button>
         <nav aria-label="Основная навигация"><button>О системе</button><button>Как это работает</button><button>Отзывы</button></nav>
-        <div className="topbar__actions"><button className={`sound ${sound ? 'is-on' : ''}`} onClick={() => setSound(!sound)} aria-label="Включить или выключить звук"><i /><i /><i /></button><button className="account"><CircleUserRound size={18} /><span>Личный кабинет</span></button></div>
+        <div className="topbar__actions"><button className={`sound ${sound ? 'is-on' : ''}`} onClick={toggleSound} aria-label={sound ? 'Выключить музыку' : 'Включить музыку'} aria-pressed={sound} disabled={soundLoading}><i /><i /><i /></button><button className="account"><CircleUserRound size={18} /><span>Личный кабинет</span></button></div>
       </header>
 
       {screen === 'home' ? (
