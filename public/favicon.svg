@@ -1,6 +1,15 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M22 19.2727C22 20.779 20.779 22 19.2727 22H14.7273C13.221 22 12 20.779 12 19.2727V12H19.2727C20.779 12 22 13.221 22 14.7273V19.2727Z" fill="#68C4FF"/>
-<path d="M20 2C21.1046 2 22 2.89543 22 4V7C22 8.10457 21.1046 9 20 9H17C15.8954 9 15 8.10457 15 7V4C15 2.89543 15.8954 2 17 2H20Z" fill="#0C79D8"/>
-<path d="M7 15C8.10457 15 9 15.8954 9 17V20C9 21.1046 8.10457 22 7 22H4C2.89543 22 2 21.1046 2 20V17C2 15.8954 2.89543 15 4 15H7Z" fill="#0C79D8"/>
-<path d="M12 12H4.72727C3.22104 12 2 10.779 2 9.27273V4.72727C2 3.22104 3.22104 2 4.72727 2H9.27273C10.779 2 12 3.22104 12 4.72727V12Z" fill="#2E9EFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="core" cx="38%" cy="30%"><stop offset="0" stop-color="#26333a"/><stop offset="1" stop-color="#071016"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0a2"/><stop offset=".48" stop-color="#d6a33e"/><stop offset="1" stop-color="#805318"/></linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="#081117" stroke="#e6bd58" stroke-width="2"/>
+  <path d="M32 5A27 27 0 0 1 51.1 12.9L32 32Z" fill="#ef4b3e"/><path d="M51.1 12.9A27 27 0 0 1 59 32H32Z" fill="#f2a13a"/>
+  <path d="M59 32A27 27 0 0 1 51.1 51.1L32 32Z" fill="#55bd64"/><path d="M51.1 51.1A27 27 0 0 1 32 59V32Z" fill="#35aea9"/>
+  <path d="M32 59A27 27 0 0 1 12.9 51.1L32 32Z" fill="#397fc8"/><path d="M12.9 51.1A27 27 0 0 1 5 32H32Z" fill="#6551ae"/>
+  <path d="M5 32A27 27 0 0 1 12.9 12.9L32 32Z" fill="#b94591"/><path d="M12.9 12.9A27 27 0 0 1 32 5V32Z" fill="#e44d39"/>
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#f1d47d" stroke-width="1.4"/>
+  <path d="M32 7 36 27 57 32 36 37 32 57 28 37 7 32 28 27Z" fill="url(#gold)" stroke="#fff1ad" stroke-width=".8"/>
+  <circle cx="32" cy="32" r="11.5" fill="url(#core)" stroke="#e8c263" stroke-width="1.5"/>
+  <text x="32" y="36.4" text-anchor="middle" fill="#ffe7a0" font-family="Georgia,serif" font-size="11" font-weight="700">СИГ</text>
 </svg>

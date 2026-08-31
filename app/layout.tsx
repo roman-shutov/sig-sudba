@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://palitra-sudby-sig.supashutik.chatgpt.site'),
   title: 'Палитра судьбы — СИГ',
   description: 'Интерактивный компас настоящего момента и 12 ступеней к себе.',
+  icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }], shortcut: '/favicon.svg' },
   openGraph: { title: 'Палитра судьбы — СИГ', description: 'Твой компас уже внутри', images: ['/og.png'] },
   twitter: { card: 'summary_large_image', title: 'Палитра судьбы — СИГ', description: 'Твой компас уже внутри', images: ['/og.png'] },
 };
