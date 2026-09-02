@@ -86,6 +86,7 @@ export default function Home() {
   const [musicOn, setMusicOn] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'month' | 'year' | 'step'>('year');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const accountReturnRef = useRef<Exclude<Screen, 'account'>>('home');
 
   useEffect(() => {
     const remembered = window.localStorage.getItem('sig-demo-state');
@@ -130,7 +131,12 @@ export default function Home() {
   const navigate = (next: Screen) => { setMobileMenu(false); setScreen(next); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const buildCompass = () => { if (digits.length < 3) return; setScreen('loading'); window.setTimeout(() => setScreen('result'), 1700); };
   const openStep = (index: number) => { setActiveStep(index); navigate(stepStatus(index) === 'locked' ? 'pricing' : 'step'); };
-  const openAccount = (tab: AccountTab = 'overview') => { setAccountTab(tab); navigate('account'); };
+  const openAccount = (tab?: AccountTab) => {
+    if (screen !== 'account') accountReturnRef.current = screen;
+    if (tab) setAccountTab(tab);
+    navigate('account');
+  };
+  const toggleAccount = () => screen === 'account' ? navigate(accountReturnRef.current) : openAccount();
   const toggleMusic = async () => {
     if (!audioRef.current) { audioRef.current = new Audio('/audio/endless-bell-01.mp3'); audioRef.current.loop = true; audioRef.current.volume = .22; }
     if (musicOn) audioRef.current.pause(); else await audioRef.current.play().catch(() => undefined);
@@ -143,7 +149,7 @@ export default function Home() {
     <header className="topbar">
       <button className="brand" onClick={() => navigate('home')} aria-label="На главную"><Sigil compact /><span><b>СИСТЕМА</b><small>ИНДИВИДУАЛЬНОЙ ГЕОМЕТРИИ</small></span></button>
       <nav className={mobileMenu ? 'is-open' : ''} aria-label="Основная навигация"><button onClick={() => navigate('home')}>Компас</button><button onClick={() => navigate('steps')}>12 ступеней</button><button onClick={() => showNotice('Раздел «О системе» готов к наполнению авторским текстом')}>О системе</button><button onClick={() => showNotice('Раздел с отзывами подготовлен к наполнению')}>Отзывы</button></nav>
-      <div className="topbar__actions"><button className={`sound ${musicOn ? 'is-on' : ''}`} onClick={toggleMusic} aria-label={musicOn ? 'Выключить музыку' : 'Включить музыку'}>{musicOn ? <Pause size={15} /> : <Play size={15} />}</button><button className="account" onClick={() => openAccount()}><CircleUserRound size={18} /><span>Личный кабинет</span></button><button className="menu-button" onClick={() => setMobileMenu((open) => !open)} aria-label="Открыть меню">{mobileMenu ? <X /> : <Menu />}</button></div>
+      <div className="topbar__actions"><button className={`sound ${musicOn ? 'is-on' : ''}`} onClick={toggleMusic} aria-label={musicOn ? 'Выключить музыку' : 'Включить музыку'}>{musicOn ? <Pause size={15} /> : <Play size={15} />}</button><button className={`account ${screen === 'account' ? 'is-open' : ''}`} onClick={toggleAccount} aria-pressed={screen === 'account'} aria-label={screen === 'account' ? 'Закрыть личный кабинет' : 'Открыть личный кабинет'}><CircleUserRound size={18} /><span>Личный кабинет</span></button><button className="menu-button" onClick={() => setMobileMenu((open) => !open)} aria-label="Открыть меню">{mobileMenu ? <X /> : <Menu />}</button></div>
     </header>
 
     {screen === 'home' ? <section className="hero screen-enter">
