@@ -145,7 +145,6 @@ export default function Home() {
     setMusicOn(!musicOn);
   };
   const accountTitle = accountNav.find((item) => item.id === accountTab)?.label ?? 'Личный кабинет';
-  const progressPercent = Math.round(completedCount / steps.length * 100);
 
   return <main ref={shellRef} className={`site-shell site-shell--${screen}`}>
     <div className="world" aria-hidden="true"><div className="world__image" /><div className="world__veil" /><div className="aurora" /><div className="stars" /></div>
@@ -155,10 +154,6 @@ export default function Home() {
       <div className="topbar__actions"><button className={`sound ${musicOn ? 'is-on' : ''}`} onClick={toggleMusic} aria-label={musicOn ? 'Выключить музыку' : 'Включить музыку'}>{musicOn ? <Pause size={15} /> : <Play size={15} />}</button><button className={`account ${screen === 'account' ? 'is-open' : ''}`} onClick={toggleAccount} aria-pressed={screen === 'account'} aria-label={screen === 'account' ? 'Закрыть личный кабинет' : 'Открыть личный кабинет'}><CircleUserRound size={18} /><span>Личный кабинет</span></button><button className="menu-button" onClick={() => setMobileMenu((open) => !open)} aria-label="Открыть меню">{mobileMenu ? <X /> : <Menu />}</button></div>
     </header>
 
-    <button className="path-progress" onClick={() => openAccount('steps')} aria-label={`Твой путь в СИГ: пройдено ${completedCount} из 12 ступеней`}>
-      <span><small>ТВОЙ ПУТЬ В СИГ</small><strong>{completedCount} из 12 пройдено</strong></span>
-      <i aria-hidden="true"><b style={{ width: `${Math.max(3, progressPercent)}%` }} /></i>
-    </button>
     {screen !== 'home' ? <button className="compass-return" onClick={() => navigate('home')}><ArrowLeft size={16} /> Компас</button> : null}
 
     {screen === 'home' ? <section className="hero screen-enter">
