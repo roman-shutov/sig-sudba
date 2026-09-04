@@ -55,12 +55,14 @@ function polar(cx: number, cy: number, radius: number, angle: number) {
 
 function Sigil({ compact = false, numbered = false }: { compact?: boolean; numbered?: boolean }) {
   const colors = ['#ef5147', '#f28d35', '#eecb48', '#5fbd68', '#40b5a6', '#4b9ed3', '#526cc2', '#8b58a8'];
+  const clockDots = [12, 1, 2, 4, 5, 7, 8, 10, 11];
   return <div className={`sigil ${compact ? 'sigil--compact' : ''}`} aria-hidden="true">
     <div className="sigil__halo" />
     <svg viewBox="0 0 320 320">
       <defs><filter id="sigGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
       <circle cx="160" cy="160" r="145" className="sigil__outer" /><circle cx="160" cy="160" r="128" className="sigil__ticks" />
       {colors.map((color, index) => { const p1 = polar(160, 160, 121, index * 45 - 90); const p2 = polar(160, 160, 121, index * 45 - 45); return <path key={color} d={`M160 160 L${p1.x} ${p1.y} A121 121 0 0 1 ${p2.x} ${p2.y} Z`} fill={color} opacity=".8" />; })}
+      {numbered ? <g className="sigil__clock-dots">{clockDots.map((hour) => { const point = polar(160, 160, 154, hour * 30 - 90); return <circle key={hour} cx={point.x} cy={point.y} r="5.5" />; })}</g> : null}
       <circle cx="160" cy="160" r="87" className="sigil__inner" />
       <g className="sigil__needle" filter="url(#sigGlow)"><path d="M160 22 179 141 160 160 141 141Z" /><path d="M298 160 179 179 160 160 179 141Z" /><path d="M160 298 141 179 160 160 179 179Z" /><path d="M22 160 141 141 160 160 141 179Z" /></g>
       <circle cx="160" cy="160" r="55" className="sigil__core" /><text x="160" y="171" textAnchor="middle" className="sigil__text">СИГ</text>
@@ -143,21 +145,28 @@ export default function Home() {
     setMusicOn(!musicOn);
   };
   const accountTitle = accountNav.find((item) => item.id === accountTab)?.label ?? 'Личный кабинет';
+  const progressPercent = Math.round(completedCount / steps.length * 100);
 
   return <main ref={shellRef} className={`site-shell site-shell--${screen}`}>
     <div className="world" aria-hidden="true"><div className="world__image" /><div className="world__veil" /><div className="aurora" /><div className="stars" /></div>
     <header className="topbar">
-      <button className="brand" onClick={() => navigate('home')} aria-label="На главную"><Sigil compact /><span><b>СИСТЕМА</b><small>ИНДИВИДУАЛЬНОЙ ГЕОМЕТРИИ</small></span></button>
+      <button className="brand" onClick={() => openAccount('overview')} aria-label="Открыть «Твой путь в СИГ»"><Sigil compact /><span><b>Система индивидуальной</b><small>геометрии</small></span></button>
       <nav className={mobileMenu ? 'is-open' : ''} aria-label="Основная навигация"><button onClick={() => navigate('home')}>Компас</button><button onClick={() => navigate('steps')}>12 ступеней</button><button onClick={() => showNotice('Раздел «О системе» готов к наполнению авторским текстом')}>О системе</button><button onClick={() => showNotice('Раздел с отзывами подготовлен к наполнению')}>Отзывы</button></nav>
       <div className="topbar__actions"><button className={`sound ${musicOn ? 'is-on' : ''}`} onClick={toggleMusic} aria-label={musicOn ? 'Выключить музыку' : 'Включить музыку'}>{musicOn ? <Pause size={15} /> : <Play size={15} />}</button><button className={`account ${screen === 'account' ? 'is-open' : ''}`} onClick={toggleAccount} aria-pressed={screen === 'account'} aria-label={screen === 'account' ? 'Закрыть личный кабинет' : 'Открыть личный кабинет'}><CircleUserRound size={18} /><span>Личный кабинет</span></button><button className="menu-button" onClick={() => setMobileMenu((open) => !open)} aria-label="Открыть меню">{mobileMenu ? <X /> : <Menu />}</button></div>
     </header>
+
+    <button className="path-progress" onClick={() => openAccount('steps')} aria-label={`Твой путь в СИГ: пройдено ${completedCount} из 12 ступеней`}>
+      <span><small>ТВОЙ ПУТЬ В СИГ</small><strong>{completedCount} из 12 пройдено</strong></span>
+      <i aria-hidden="true"><b style={{ width: `${Math.max(3, progressPercent)}%` }} /></i>
+    </button>
+    {screen !== 'home' ? <button className="compass-return" onClick={() => navigate('home')}><ArrowLeft size={16} /> Компас</button> : null}
 
     {screen === 'home' ? <section className="hero screen-enter">
       <div className="hero__compass">
         <div className="hero__portal" aria-hidden="true"><div className="hero__portal-image" /></div>
         <Sigil numbered /><div className="orbit orbit--one" /><div className="orbit orbit--two" />
       </div>
-      <div className="hero__copy"><p className="eyebrow"><span /> ПАЛИТРА СУДЬБЫ <span /></p><h1>Открой путь<br /><em>внутрь себя</em></h1><p>Выбери то, что откликается. Услышь цифры из подсознания.<br />Получи компас настоящего момента.</p><div className="hero__actions"><button className="btn btn--primary" onClick={() => navigate('phrases')}><Sparkles size={18} /> Получить компас <ArrowRight size={18} /></button><button className="btn btn--ghost" onClick={() => navigate('steps')}><BookOpen size={18} /> 12 ступеней</button></div><div className="trust-line"><ShieldCheck size={15} /> Первый Компас бесплатно · без регистрации</div></div>
+      <div className="hero__copy"><p className="eyebrow"><span /> ТВОЙ ПУТЬ В НАСТОЯЩЕМ <span /></p><h1><span>Палитра судьбы</span><em>Компас времени</em></h1><p>Выбери направление, получи срез настоящего момента<br />и двигайся дальше — к сборке себя.</p><div className="hero__actions"><button className="btn btn--primary" onClick={() => navigate('phrases')}><Compass size={18} /> Настоящий момент <ArrowRight size={18} /></button><button className="btn btn--ghost" onClick={() => navigate('steps')}><BookOpen size={18} /> Собрать себя</button></div><div className="trust-line"><ShieldCheck size={15} /> Первый Компас бесплатно · без регистрации</div></div>
     </section> : null}
 
     {screen === 'phrases' ? <section className="flow-screen phrase-screen screen-enter">
@@ -187,7 +196,7 @@ export default function Home() {
     {screen === 'account' ? <section className="account-shell screen-enter"><aside className="account-sidebar"><div className="account-identity"><div><UserRound /></div><span><small>ЛИЧНОЕ ПРОСТРАНСТВО</small><strong>Ваш путь в СИГ</strong></span></div><nav>{accountNav.map((item) => { const Icon = item.icon; return <button key={item.id} className={accountTab === item.id ? 'is-active' : ''} onClick={() => setAccountTab(item.id)}><Icon size={17} /><span>{item.label}</span>{item.id === 'steps' ? <b>{completedCount}/12</b> : null}</button>; })}</nav><button className="sidebar-exit" onClick={() => navigate('home')}><LogOut size={16} /> Вернуться на сайт</button></aside><div className="account-main"><div className="account-header"><div><small>ЛИЧНЫЙ КАБИНЕТ</small><h2>{accountTitle}</h2></div>{subscribed ? <Pill>Полный доступ активен</Pill> : <button className="btn btn--small" onClick={() => navigate('pricing')}>Открыть все ступени</button>}</div>{accountTab === 'overview' ? <AccountOverview hasCompass={hasCompass} saved={saved} subscribed={subscribed} completedCount={completedCount} onNavigate={setAccountTab} onNew={() => navigate('phrases')} /> : null}{accountTab === 'codings' ? <CodingsPanel hasCompass={hasCompass} phrase={selectedPhrase} digits={digits} onOpen={() => navigate('result')} /> : null}{accountTab === 'compasses' ? <CompassesPanel hasCompass={hasCompass} phrase={selectedPhrase} digits={digits} onOpen={() => navigate('result')} onNew={() => navigate('phrases')} /> : null}{accountTab === 'steps' ? <AccountSteps onOpen={openStep} statusFor={stepStatus} /> : null}{accountTab === 'directions' ? <DirectionsPanel /> : null}{accountTab === 'book' ? <BookPanel hasCompass={hasCompass} completedCount={completedCount} onNotice={showNotice} /> : null}{accountTab === 'profile' ? <ProfilePanel subscribed={subscribed} onPricing={() => navigate('pricing')} onNotice={showNotice} /> : null}</div><nav className="account-mobile-nav">{accountNav.slice(0, 5).map((item) => { const Icon = item.icon; return <button key={item.id} className={accountTab === item.id ? 'is-active' : ''} onClick={() => setAccountTab(item.id)}><Icon /><small>{item.label.split(' ')[0]}</small></button>; })}</nav></section> : null}
 
     {notice ? <div className="toast" role="status"><Check size={16} /> {notice}</div> : null}
-    {screen !== 'account' ? <footer><span>© 2026 СИГ</span><span>Авторская система саморефлексии</span><span>Все ответы уже внутри тебя</span></footer> : null}
+    {screen !== 'account' ? <footer><span>© 2026 СИГ</span><span>Авторское пространство СИГ. Для тех, кто готов увидеть себя.</span><span>Все ответы уже внутри тебя</span></footer> : null}
   </main>;
 }
 
